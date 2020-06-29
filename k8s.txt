@@ -1,0 +1,360 @@
+
+---------------------------pv  pvc-------------------------------------------
+
+删除pv  kubectl patch pv xxx -p '{"metadata":{"finalizers":null}}'
+
+-----------------------------------------------------------------------------
+
+删除所有容器 docker rm $(docker ps -aq)
+
+-----------------------------k8s 节点操作----------------------------------------
+
+查看k8s的api资源类型 kubectl api-resources
+
+查看k8s资源对象拥有的字段 kubectl explain <资源名对象名>
+
+给节点添加标签 kubectl label nodes 10.18.127.4 node=kube-node
+
+给节点修改标签 kubectl label nodes 10.18.127.4 node=kube-node --overwrite
+
+删除节点标签 kubectl label nodes 10.18.127.4 node-
+
+pod 强制删除(确定控制器被删除) kubectl -n <namespace> delete pod <pod-name> --force --grace-period=0
+
+修复节点调度  kubectl patch node 10.18.127.4 -p '{"spec":{"unschedulable":false}}'
+
+修改节点的ROLE(node->master) kubectl label node 10.18.127.3 --overwrite kubernetes.io/role=master
+
+job扩容 kubectl scale  --replicas=$N jobs/myjob
+
+---------------------------------------------------------------------------------
+
+查看pod日志  kubectl log mysql-77b495b4fd-pjw2w
+
+
+--------------------------------docker用户---------------------------------------
+1、新建用户组docker之前，查看用户组中有没有docker组，如果已经存在，则不需要再进行创建
+
+sudo cat /etc/group | grep docker
+
+2、创建docker分组，并将相应的用户添加到这个分组里面（999为组id，可以不指定）
+
+sudo groupadd -g  docker
+
+sudo usermod -aG dockerroot test
+
+sudo usermod -aG docker test
+
+3、检查一下创建是否创建成功
+
+cat /etc/group | grep test
+
+4、退出当前用户登陆状态，然后重新登录，以便让权限生效,或重启docker-daemon
+
+sudo systemctl restart docker
+
+5、确认你可以直接运行docker命令，执行docker命令
+
+docker  info
+
+如果出现以下提示，则需要/var/run/docker.sock权限
+
+Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get http://%2Fvar%2Frun%2Fdocker.sock/v1.39/info: dial unix /var/run/docker.sock: connect: permission denied
+
+sudo chmod a+rw /var/run/docker.sock
+
+------------------------------查看docker进程调用关系-----------------------------
+containerd的目录：/var/run/docker/containerd/containerd.toml
+
+debug 保存目录：/var/run/docker/containerd/containerd-debug.sock
+
+docker run -id ubuntu bash
+
+ps fxa|grep docker -A 1
+
+
+
+---------------------------------------------------------------------------------
+
+---------------------------docker开启2375端口，提供外部访问docker----------------------
+
+编辑docker文件：/etc/systemd/system/docker.service 或者 /usr/lib/systemd/system/docker.service
+
+vim /etc/systemd/system/docker.service
+
+修改ExecStart为下面内容
+ExecStart=/opt/kube/bin/dockerd  -H tcp://0.0.0.0:2375 -H unix://var/run/docker.sock
+
+重新加载docker配置
+//1.加载docker守护进程
+systemctl daemon-reload
+//2.重启docker
+systemctl restart docker
+
+测试端口：
+curl 127.0.0.1:2375/version
+
+得到类似输出：
+{"Platform":{"Name":"Docker Engine - Community"},"Components":[{"Name":"Engine","Version":"18.09.2","Details":{"ApiVersion":"1.39","Arch":"amd64","BuildTime"
+:"2019-02-10T04:20:28.000000000+00:00","Experimental":"false","GitCommit":"6247962","GoVersion":"go1.10.6","KernelVersion":"3.10.0-957.27.2.el7.x86_64","MinAPIVersion":"1.12","Os":"linux"}}],"Version":"18.09.2","ApiVersion":"1.39","MinAPIVersion":"1.12","GitCommit":"6247962","GoVersion":"go1.10.6","Os":"linux","Arch":"amd64","KernelVersion":"3.10.0-957.27.2.el7.x86_64","BuildTime":"2019-02-10T04:20:28.000000000+00:00"}
+
+# v1.39 docker API version
+#请求dockerd创建容器，但由于dockerd在本地找不到相应的image，于是返回失败
+curl 127.0.0.1:2375/v1.39/containers/create  -X POST -H "Content-Type: application/json" -d '{"Image": "hello-world"}'
+{"message":"No such image: hello-world:latest"}
+
+#请求dockerd去找registry服务器拿image
+#这里的http应答中的内容包含了很多跟进度条相关的内容
+curl '127.0.0.1:2375/v1.39/images/create?fromImage=hello-world&tag=latest' -X POST
+
+/etc/resolv.conf 修改dns服务器
+
+---------------------------------------------------------------------------------------
+
+----------------------------------scratch镜像本地构建----------------------------------------
+
+ tar cv --files-from /dev/null | docker import - scratch
+ 
+---------------------------------------------------------------------------------------------
+
+-------------------------------Docker无法启动 error initializing graphdriver: driver not supported--------------------------------
+systemctl status docker
+
+# Error starting daemon: error initializing graphdriver: driver not supported
+
+解决办法:
+在/etc/docker/daemon.json目录下，编辑如下内容：
+{
+  "storage-driver": "overlay2",
+  "storage-opts": [
+    "overlay2.override_kernel_check=true"
+  ]
+}
+
+再次启动
+systemctl start docker
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+--------------------------------私有仓库-----------------------------------------
+
+查看私有仓库镜像 curl http://10.18.127.1:5000/v2/_catalog
+
+查看私有仓库镜像标签 curl http://10.18.127.1:5000/v2/busybox/tags/list
+
+私有仓库客户端添加HTTP 请求
+/etc/docker/daemon.json
+{"insecure-registries": ["10.18.127.1:5000"],}
+
+systemctl restart docker
+
+journalctl -xe  查看出错原因
+查看配置文件(一般是配置文件冲突)
+vim /etc/systemd/system/docker.service 
+
+
+删除私有仓库镜像（仅元数据）  curl -v -X DELETE 
+http://10.18.127.1:5000/v2/tensorflow-1.13.1-notebook-cpu/manifests/sha256:5b32df24b3bb2b8692ed1e73fc240ac702d479d1e9cd141024099ec018184512
+
+运行私有镜像(可删除)
+
+docker run -itd \
+> -v /data/registry:/var/lib/registry \
+> -p 5000:5000 \
+> --restart=always \
+> -e REGISTRY_STORAGE_DELETE_ENABLED=true \
+> --name registry registry:latest
+
+
+删除私有镜像（垃圾回收遗留镜像数据）
+# docker exec -it registry  sh
+# cd /var/lib/
+# du -sh registry/
+# registry garbage-collect /etc/docker/registry/config.yml
+# du -sh registry/
+# exit
+
+------------------------------------------------------------------------------------
+
+
+------------------------nfs----------------------------------
+
+nfs挂载  mount -t nfs 10.18.129.161:/mnt/xfs /mnt/xfs
+
+nfs客户端卸载挂载目录：
+umount /mnt/xfs
+
+客户端查看目录挂载情况：
+df /mnt/xfs
+
+nfs服务端卸载：
+systemctl stop nfs-server
+systemctl stop rpcbind.service / systemctl stop rpcbind.socket
+
+
+nfs服务端开启nfs服务：
+systemctl start nfs.service
+systemctl start rpcbind.service
+
+
+nfs服务端nfs服务状态查看：
+systemctl status nfs.service
+systemctl status rpcbind.service
+
+NFS服务端配置：
+vim /etc/exports
+<输出目录> [客户端1 选项（访问权限,用户映射,其他）] [客户端2 选项（访问权限,用户映射,其他）]
+/mnt/xfs         10.18.127.0/8(rw)
+
+查看nfs服务器配置：
+/mnt/xfs      	10.18.127.0/8
+
+服务器端查询nfs共享状态：
+showmount -e
+# Export list for master:
+# /mnt/xfs 10.18.127.0/8
+
+NFS权限设定： TODO
+
+--------------------------------------------------------------
+
+
+--------------------------Python3 源码安装-------------------------------------
+ 
+yum install -y zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel gcc make libffi-devel
+
+wget https://www.python.org/ftp/python/3.7.2/Python-3.7.2.tar.xz
+
+tar -xvf Python-3.7.2.tar.xz
+
+#tar -zxvf Python-3.7.2.tar.gz
+
+cd Python-3.7.2
+
+#编译安装
+./configure prefix=/usr/local/python3
+make && make install
+
+#安装后 /usr/local目录下会有python3
+
+
+# 添加软链接
+ln -sf /usr/local/python3/bin/python3.7 /usr/bin/python3
+
+#ln -s /usr/local/python3/bin/python3.7 /usr/bin/python3
+
+# 验证
+python -V
+
+
+安装第三方库
+python3 -m pip -V
+python3 -m pip install -y Pillow
+
+-------------------------------------------------------------------------------
+
+
+-------------------------------时间同步方式------------------------------------
+
+docker run -it --cap-add SYS_TIME pipelineai/kubeflow-notebook-cpu-1.13.1:2.0.2 /bin/bash
+|| docker run -it --privileged pipelineai/kubeflow-notebook-cpu-1.13.1:2.0.2 /bin/bash
+
+apt-get -y update && apt-get install -y tzdata
+
+yum install -y ntp
+
+ntpdate ntp1.aliyun.com
+
+ntpdate cn.pool.ntp.org
+
+docker commit -a "wzy" -m "my apache" a404c6c174a2  mymysql:v1
+-------------------------------------------------------------------------------
+
+
+-----------------------------kubeflow notebook 镜像构建 Dockerfile------------------------
+
+FROM pipelineai/kubeflow-notebook-cpu-1.13.1-timezone:2.0.2
+ENV NB_PREFIX /
+CMD ["sh","-c", "jupyter notebook --notebook-dir=/home/jovyan --ip=0.0.0.0 --no-browser --allow-root --port=8888 --NotebookApp.token='' --NotebookApp.password='' --NotebookApp.allow_origin='*' --NotebookApp.base_url=${NB_PREFIX}"]
+
+-------------------------------------------------------------------------------
+
+-------------------------------ssh 免密登录-------------------------------------------
+生成密钥对： ssh-keygen -t rsa -P ""
+拷贝本机公钥到另一个节点authorized keys文件中 ssh-copy-id wzy@10.1.23.19
+--------------------------------------------------------------------------------------
+
+----------------------------------centos安装软件包------------------------------------
+针对错误消息中的每个依赖包,执行命令repoquery --nvr --whatprovides   <依赖文件>,安装输出包, such as
+repoquery --nvr --whatprovides libXss.so.1
+### libXScrnSaver-1.2.2-6.1.el7
+--------------------------------------------------------------------------------------
+
+--------------------------------------打包/解压----------------------------------------------
+
+gzip压缩命令:     tar -zcvf 归档路径 被打包路径.  (gun-zip压缩,后缀一般是.tar.gz)
+
+bzip2压缩命令:   tar -jcvf  归档路径 被打包路径.  (bzip2压缩,后缀一般是.tar.bz2)
+
+
+tar -xvf 归档文件路径   ---可拆tar/gzip/bzip2格式的包
+
+gzip压缩命令：   tar -zxvf 归档文件路径   ---只可拆gzip格式的包
+
+bzip2解压命令：  tar -jxvg 归档文件路径    ---只可拆bzip2格式的包
+---------------------------------------------------------------------------------------------
+
+-------------------------------------gcc 静态编译---------------------------------------------
+gcc --static -o hello hello.c 报错:
+/usr/bin/ld: cannot find -lc
+
+静态编译时需要将所有的.a库链接到可执行文件中，所以需要libc静态库文件，在系统找查找glibc-static提示没有库文件
+yum install -y glibc-static
+----------------------------------------------------------------------------------------------
+----------------------------------------查看firewall防火墙------------------------------------
+# 查看firewall开放的端口
+firewall-cmd --zone=public --list-ports
+
+# 防火墙重启
+systemctl restart firewalld
+
+# 打开某个端口
+firewall-cmd --zone=public --add-port=2375/tcp --permanent
+firewall-cmd --reload
+
+# 删除某个端口
+firewall-cmd --zone=public --remove-port=2375/tcp --permanent
+firewall-cmd --reload
+
+# 关闭防火墙
+systemctl stop firewalld
+
+# 查看应用占用的端口
+ss -tunlp | grep teamviewerd
+
+----------------------------------------------------------------------------------------------
+
+---------------------------yum 安装rpm解决依赖库------------------------
+yum --nogpgcheck localinstall packagename.arch.rpm
+
+rpm 卸载
+
+首先查找安装：
+rpm -qa | grep -i 软件名
+
+然后卸载：
+sudo rpm -e -- 包名
+
+
+dpkg解决依赖库问题
+## 添加路径很重要
+sudo apt-get install ./packagename.arch.deb
+
+dpkg卸载
+
+dpkg -get-selections | grep 软件名
+
+sudo apt-get remove -purge 软件名
+
+
+-------------------------------------------------------------------------------------------------
