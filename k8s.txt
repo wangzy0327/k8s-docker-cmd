@@ -27,6 +27,10 @@ pod 强制删除(确定控制器被删除) kubectl -n <namespace> delete pod <po
 
 job扩容 kubectl scale  --replicas=$N jobs/myjob
 
+修改有状态sts为滚动更新 kubectl patch statefulset hadoop-dn -p '{"spec":{"updateStrategy":{"type":"RollingUpdate"}}}'
+
+滚动更新有状态sts的镜像版本 kubectl set image sts <sts-name> <container-name>=10.18.127.2:5000/hadoop-py3-2.9.2:v2
+
 ---------------------------------------------------------------------------------
 
 查看pod日志  kubectl log mysql-77b495b4fd-pjw2w
