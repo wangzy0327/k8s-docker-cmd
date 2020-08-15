@@ -5,6 +5,12 @@
 
 -----------------------------------------------------------------------------
 
+---------------------------  pod -------------------------------------------
+kubectl delete pod <name> --grace-period=0 --force -n <namespace>
+----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 删除所有容器 docker rm $(docker ps -aq)
 
 -----------------------------k8s 节点操作----------------------------------------
@@ -27,9 +33,11 @@ pod 强制删除(确定控制器被删除) kubectl -n <namespace> delete pod <po
 
 job扩容 kubectl scale  --replicas=$N jobs/myjob
 
-修改有状态sts为滚动更新 kubectl patch statefulset hadoop-dn -p '{"spec":{"updateStrategy":{"type":"RollingUpdate"}}}'
+statefulsets扩容 kubectl scale statefulset <sts> --replicas=4
 
-滚动更新有状态sts的镜像版本 kubectl set image sts <sts-name> <container-name>=10.18.127.2:5000/hadoop-py3-2.9.2:v2
+滚动更新RC kubectl rolling-update my-nginx --image=nginx:1.9.1
+
+更新sts镜像(statefulset) kubectl set image statefulset web nginx=nginx-slim:0.7
 
 ---------------------------------------------------------------------------------
 
@@ -148,7 +156,7 @@ systemctl start docker
 
 私有仓库客户端添加HTTP 请求
 /etc/docker/daemon.json
-{"insecure-registries": ["10.18.127.1:5000"],}
+{"insecure-registries": ["10.18.127.2:5000"],}
 
 systemctl restart docker
 
@@ -163,11 +171,11 @@ http://10.18.127.1:5000/v2/tensorflow-1.13.1-notebook-cpu/manifests/sha256:5b32d
 运行私有镜像(可删除)
 
 docker run -itd \
-> -v /data/registry:/var/lib/registry \
-> -p 5000:5000 \
-> --restart=always \
-> -e REGISTRY_STORAGE_DELETE_ENABLED=true \
-> --name registry registry:latest
+ -v /data/registry:/var/lib/registry \
+ -p 5000:5000 \
+ --restart=always \
+ -e REGISTRY_STORAGE_DELETE_ENABLED=true \
+ --name registry registry:2.7
 
 
 删除私有镜像（垃圾回收遗留镜像数据）
@@ -285,7 +293,7 @@ CMD ["sh","-c", "jupyter notebook --notebook-dir=/home/jovyan --ip=0.0.0.0 --no-
 
 -------------------------------ssh 免密登录-------------------------------------------
 生成密钥对： ssh-keygen -t rsa -P ""
-拷贝本机公钥到另一个节点authorized keys文件中 ssh-copy-id wzy@10.1.23.19
+拷贝本机公钥到另一个节点authorized keys文件中 ssh-copy-id root@10.18.127.4
 --------------------------------------------------------------------------------------
 
 ----------------------------------centos安装软件包------------------------------------
@@ -362,3 +370,33 @@ sudo apt-get remove -purge 软件名
 
 
 -------------------------------------------------------------------------------------------------
+
+---------------------------------hdfs ---------------------------------------------------------
+hdfs 退出安全模式  hdfs dfsadmin -safemode leave
+-----------------------------------------------------------------------------------------------
+
+-----------------------------------网桥---------------------------------------------------
+# 停止docker service
+systemctl stop docker
+ 
+#关闭docker0网卡(如果没有ifconfig，则需要先安装(yum install net-tools))
+ifconfig docker0 down
+ 
+#删除docker0网卡(如果没有brctl，则需要先安装(yum install bridge-utils))
+brctl delbr docker0
+------------------------------------------------------------------------------------------
+
+-----------------------------------------时间同步------------------------------------------
+# 如果没有date，则需要先安装date命令
+yum install -y coreutils
+
+# 安装ntpdate 
+yum install -y ntpdate(NTP network time protocol)
+
+# 时间同步
+ntpdate ntp1.aliyun.com
+------------------------------------------------------------------------------------------
+-----------------------------------------sed----------------------------------------------
+截取指定行之间的内容到新的文件中
+sed -n '开始行数,结束行数p' 待截取文件 >> 保存的
+------------------------------------------------------------------------------------------
