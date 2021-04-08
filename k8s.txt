@@ -189,7 +189,80 @@ docker run -itd \
 ------------------------------------------------------------------------------------
 
 
+----------------------------------------------------harbor 私有仓库------------------------------------------------------
+
+安装harbor过程：
+
+1、安装底层需求：
+ python应该是2.7或更高版本
+ Docker引擎应为1.10或更高版本
+ Docker Compose需要为1.6.0或更高版本
+
+ docker-compose:
+
+ curl -L https://github.com/docker/compose/releases/download/1.9.0/docker-compose-`uname -s`-`uname -m`
+
+ >/usr/local/bin/docker-compose
+
+ 2、harbor安装：harbor官方地址：https://github.com/vmware/harbor/releases
+ 
+ 2.1 解压软件包： tar -xvf harbor-offline-installer-<version>.tgz https://github.com/vmware/harbor/releases/download/v1.2.0/harbor-offline-installer-v1.2.0.tgz
+
+ 2.2 配置 : harbor.cfg
+  a、必选参数 、 hostname：目标的主机名或者完全限定域名 ： ui_url_protocol：http或https。默认为 。 http db_password：用于 ： db_auth的MySQL数据库的根密码。更改此密码进行任何生产用途 数 max_job_workers：（默认值为 ： 3）作业服务中的复制工作人员的最大数量。对于每个映像复制作业， ） 工作人员将存储库的所有标签同步到远程目标。增加此数字允许系统中更多的并发复制作业。但是，由于每个工 工作人员都会消耗一定数量的网络 作 / CPU/IO资源，请根据主机的硬件资源，仔细选择该属性的值 资 customize_crt：（： on或off。默认为 。 on）当此属性打开时， ） prepare脚本将为注册表的令牌的生成 脚 /验证创 验 建私钥和根证书 建 ssl_cert：SSL证书的路径，仅当协议设置为 证 https时才应用 时 ssl_cert_key：SSL密钥的路径，仅当协议设置为 密 https时才应用 时 secretkey_path：用于在复制策略中加密或解密远程注册表的密码的密钥路径
+
+ 2.3 创建 https 证书以及配置相关目录权限
+ mkdir -p /data/cert
+ cd /data/cert
+
+ openssl genrsa -des3 -out server.key 2048
+ openssl req -new -key server.key -out server.csr
+ cp server.key server.key.org
+ openssl rsa -in server.key.org -out server.key
+ openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
+
+ 2.4 运行脚本进行安装
+ ./install.sh
+
+ 2.5 访问测试
+ https://reg.yourdomain.com的管理员门户（将 reg.yourdomain.com更改为您的主机名 更 harbor.cfg）。请注意，默认管理员用户名/密码为 admin /Harbor12345
+
+ 2.6 上传镜像进行上传测试
+
+   a、指定镜像仓库地址：
+   vim /etc/docker/daemon.json
+    {"insecure-registries": ["serverip"] }
+   b、下载测试镜像 ： docker pull hello-world
+   c、给镜像重新打标签 ： docker tag hello-world serverip/library/hello-world:latest 
+   d、登录进行上传 ： docker login serverip
+
+ 2.7 其它, Docker客户端下载测试 
+  a、指定镜像仓库地址 : 
+  vim/etc/docker/daemon.json {"insecure-registries": ["serverip"] }
+
+  b、下载测试镜像 : docker pull serverip/library/hello-world:latest
+
+
+
+重启docker后，harbor服务挂掉重启：
+
+cd /usr/local/harbor/
+
+看到docker-compose.yml可知使用了docker-compose，可以使用后台启动的方式来实现harbor的开机启动功能
+
+停止容器
+docker-compose stop
+
+后台启动容器
+docker-compose up -d
+
+------------------------------------------------------------------------------------------------------------------------
+
 ------------------------nfs----------------------------------
+
+给共享目录添加权限：
+    chown -R nfsnobody.nfsnobody /sharedir/
+把NFS共享目录赋予 NFS默认用户nfsnobody用户和用户组权限，如不设置，会导致NFS客户端无法在挂载好的共享目录中写入数据
 
 nfs挂载  mount -t nfs 10.18.129.161:/mnt/xfs /mnt/xfs
 
@@ -266,6 +339,31 @@ python3 -m pip install -y Pillow
 -------------------------------------------------------------------------------
 
 
+--------------------------Python3 非root用户 源码安装-------------------------------------
+
+wget https://www.python.org/ftp/python/3.7.2/Python-3.7.2.tar.xz
+tar -xzf Python-3.7.2.tar.gz
+cd Python-3.7.2
+mkdir -p /home/xxx/software/python3.7
+# 编译安装
+./configure --prefix="/home/xxx/software/python3.7"
+make
+make install
+
+
+vim ~/.bashrc
+#添加该语句
+alias python3=/home/xxx/software/python3.6/bin/python3.6
+alias pip3=/home/xxx/software/python3.6/bin/pip3.6
+
+source .bashrc
+
+python3 -V
+pip3 -V
+
+---------------------------------------------------------------------------------------------
+
+
 -------------------------------时间同步方式------------------------------------
 
 docker run -it --cap-add SYS_TIME pipelineai/kubeflow-notebook-cpu-1.13.1:2.0.2 /bin/bash
@@ -308,12 +406,14 @@ gzip压缩命令:     tar -zcvf 归档路径 被打包路径.  (gun-zip压缩,�
 
 bzip2压缩命令:   tar -jcvf  归档路径 被打包路径.  (bzip2压缩,后缀一般是.tar.bz2)
 
+tar -jcvf  kubeasz.tar.bz2 kubeasz/
+
 
 tar -xvf 归档文件路径   ---可拆tar/gzip/bzip2格式的包
 
 gzip压缩命令：   tar -zxvf 归档文件路径   ---只可拆gzip格式的包
 
-bzip2解压命令：  tar -jxvg 归档文件路径    ---只可拆bzip2格式的包
+bzip2解压命令：  tar -jxvf 归档文件路径    ---只可拆bzip2格式的包
 ---------------------------------------------------------------------------------------------
 
 -------------------------------------gcc 静态编译---------------------------------------------
@@ -400,3 +500,88 @@ ntpdate ntp1.aliyun.com
 截取指定行之间的内容到新的文件中
 sed -n '开始行数,结束行数p' 待截取文件 >> 保存的
 ------------------------------------------------------------------------------------------
+
+
+
+-----------------------------------------编译源代码指定安装路径---------------------------------------
+一般编译源代码三部曲
+ ./configure
+ make
+ make install
+ 这种默认安装路径的话，会把可执行文件拷贝到/usr/local/bin，如果没有sudo权限的话是会失败的，有两种方法指定安装路径。
+  一种是在./configure的时候指定路径
+  ./configure --prefix=安装路径
+  一种是make install的时候指定路径
+  make install DESTDIR=安装路径
+----------------------------------------------------------------------------------------------------
+
+
+----------------------------------------CentOS7 源码编译QEMU 需要安装的依赖-------------------------------------------------------------
+yum install -y epel-release
+yum install centos-release-scl
+yum install -y devtoolset-8-gcc*
+yum install -y libaio-devel libcap-devel libiscsi-devel
+yum install python36-devel -y
+yum install -y ninja-build
+yum install -y glib pixman-devel
+yum install -y cmake3 zlib-devel
+----------------------------------------------------------------------------------------------------
+
+
+
+-------------------------------------vim tab转为space---------------------------------------------------------
+
+set tabstop=4
+set expandtab 用space替代tab的输入
+%ret!4
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+--------------------------------------jupyter notebook------------------------------------------------------------------------------------------------
+1、添加jupyter登录密码：
+~$ jupyter notebook password
+~$ cat .jupyter/jupyter_notebook_config.json 
+{
+  "NotebookApp": {
+    "password": "sha1:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+ }
+
+2、生成jupyter notebook 启动参数文件并修改参数
+~$ jupyter notebook --generate-config
+~$ vi .jupyter/jupyter_notebook_config.py
+
+3、jupyter_notebook_config.py添加如下参数后，并保存：
+
+c.NotebookApp.ip = '*'  #外部IP地址客户端可以访问
+c.NotebookApp.notebook_dir = '/home/wzy/notebook-dir'  #本地notebook访问的目录
+c.NotebookApp.open_browser = False   #jupyter notebook启用时不再本地默认打开浏览器
+c.NotebookApp.port = 9999            #默认访问的端口是9999
+
+
+4、直接启动notebook后台服务，并输出运行日志，之后就可以远程访问这个服务了
+~$ jupyter notebook >.jupyter/jupyter_notebook.log 2>&1 &
+[1] 10395
+
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------conda 环境-------------------------------------------------------------------------------------------
+
+1、查看python环境
+conda info --env 
+ 可以看到所有python环境，前面有*代表当前环境
+
+2、创建环境
+
+conda create --name python35 python=3.5 代表创建一个python3.5的环境，把它命名为python35
+
+3、管理和使用python环境
+
+source activate python35 来激活并使用刚才创建的环境
+
+source deactivate 来退出当前激活的环境
+
+4、 删除创建的环境 python35
+conda remove -n python35 --all
+
+----------------------------------------------------------------------------------------------------------------------------
