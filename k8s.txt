@@ -835,3 +835,34 @@ rm ./config.cache
 最后 从步骤3 再开始走一遍
 
 -----------------------------------------------------------------------------------------------------------------------
+
+
+--------------------------------------------------Java 远程调试---------------------------------------------------------
+
+IDEA 下 远程 jar 调试
+
+首先在IDEA 开发完成后将 jar 打包完成，上传到服务器上
+
+然后 在 Run/Debug Configurations | Remote JVM Debug
+
+Debugger mode: Attach to remote JVM
+Transport: Socket
+Host: 10.18.127.5   Port:8000
+
+Command line arguments for remote JVM:
+
+(-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000) 自动生成
+
+Use module classpath: Hip-conversion
+
+
+服务器端启动：
+
+java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=0.0.0.0:8000 -jar Hip-conversion-1.0.jar
+
+注意这里必须将地址写为 0.0.0.0 让客户端连接上去，不然 8000 端口只跟 127.0.0.1(服务器ip绑定：安全)
+
+然后就可以端点调试运行了
+
+
+-----------------------------------------------------------------------------------------------------------------------
