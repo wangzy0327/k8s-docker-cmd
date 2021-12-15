@@ -800,7 +800,7 @@ ln -s libstdc++.so.6.0.21 libstdc++.so.6
 
 
 至此再次运行
-./bootstrap prefix=/usr/local/cmake
+./bootstrap --prefix=/usr/local/cmake
 make -j8
 sudo make install
 
