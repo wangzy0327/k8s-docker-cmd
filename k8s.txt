@@ -308,6 +308,11 @@ NFS权限设定： TODO
  
 yum install -y zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel gcc make libffi-devel
 
+Ubuntu:
+apt install -y build-essential libssl-dev zlib1g-dev \
+libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev \
+libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev
+
 wget https://www.python.org/ftp/python/3.7.2/Python-3.7.2.tar.xz
 
 tar -xvf Python-3.7.2.tar.xz
