@@ -543,24 +543,37 @@ set expandtab 用space替代tab的输入
 
 
 --------------------------------------jupyter notebook------------------------------------------------------------------------------------------------
-1、添加jupyter登录密码：
-~$ jupyter notebook password
-~$ cat .jupyter/jupyter_notebook_config.json 
-{
-  "NotebookApp": {
-    "password": "sha1:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
- }
+
+1.jupyter notebook --generate-config
+
+此时系统会生成 ~/.jupyter/这个隐藏文件夹，且文件夹中生成了jupyter的配置文件jupyter_notebook_config.py
+
 
 2、生成jupyter notebook 启动参数文件并修改参数
 ~$ jupyter notebook --generate-config
-~$ vi .jupyter/jupyter_notebook_config.py
+~$ vi ~/.jupyter/jupyter_notebook_config.py
+
+打开python3命令行,输入如下命令：
+from notebook.auth import passwd
+passwd()
+# 此时需要输入两次密码（一次设置，一次确认），然后生成sha1的密文，拷贝下来。
+# Enter password: ········
+# Verify password: ········
+# sha1:b11ba7ae862e:6eeb922ef6b770e43a1c90922ba341faaaaaaaa
+
+打开jupyter_notebook_config.py，滚动到文件最后一行，加入下面的配置选项
+
+输入passwd()后需要两次键入密码，之后会产生一段密文
+
 
 3、jupyter_notebook_config.py添加如下参数后，并保存：
 
 c.NotebookApp.ip = '*'  #外部IP地址客户端可以访问
+# 密码 2.1中生成'sha1:xxxx"那一大串，复制时包括sha1 
+c.NotebookApp.password = 'sha1:0d00e0994444:3aeecafab4d91260d42647df8df4c3859a3430a9' 
 c.NotebookApp.notebook_dir = '/home/wzy/notebook-dir'  #本地notebook访问的目录
 c.NotebookApp.open_browser = False   #jupyter notebook启用时不再本地默认打开浏览器
-c.NotebookApp.port = 9999            #默认访问的端口是9999
+c.NotebookApp.port = 9999            #默认访问的端口是8888
 
 
 4、直接启动notebook后台服务，并输出运行日志，之后就可以远程访问这个服务了
@@ -621,6 +634,11 @@ conda install nb_conda_kernels
 解决：在新环境中安装ipykernel。
 conda install -n 环境名称 ipykernel #直接指定环境安装ipykernel
 python -m ipykernel install --user（非服务器可缺省） --name 环境名称 #写入jupyter notebook 的kernel
+
+
+删除安装的kernel
+
+jupyter kernelspec remove tensorflow28
 
 ---------------------------------------------------------------------------------------------------------------------------
 
