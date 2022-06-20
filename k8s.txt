@@ -69,11 +69,7 @@ sudo systemctl restart docker
 
 docker  info
 
-如果出现以下提示，则需要/var/run/docker.sock权限
-
-Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get http://%2Fvar%2Frun%2Fdocker.sock/v1.39/info: dial unix /var/run/docker.sock: connect: permission denied
-
-sudo chmod a+rw /var/run/docker.sock
+通过命令 newgrp docker 让其生效
 
 ------------------------------查看docker进程调用关系-----------------------------
 containerd的目录：/var/run/docker/containerd/containerd.toml
