@@ -447,6 +447,65 @@ ss -tunlp | grep teamviewerd
 
 ----------------------------------------------------------------------------------------------
 
+
+--------------------------------------iptables 管理端口-------------------------------------------------
+
+ubuntu下
+
+安装netfilter
+
+sudo apt install -y iptables-persistent
+
+其中，参数：
+
+–A：参数就看成是添加一条规则
+–p：指定协议，我们常用的tcp 协议。当然也有udp，例如53端口的DNS
+–dport：就是目标端口，当数据从外部进入服务器为目标端口
+–sport：数据从服务器出去，则为数据源端口使用
+–j：就是指定是 ACCEPT接收，或者 DROP 拒绝
+–s：指定IP
+
+# 查看端口情况
+iptables -L
+
+# 开启7890端口
+
+sudo iptables -I INPUT -p tcp --dport 7890 -j ACCEPT
+
+sudo iptables -A INPUT -p tcp --dport 7890 -j ACCEPT
+
+# 关闭端口
+
+sudo iptables -A INPUT -p tcp --dport 7890 -j DROP
+
+关闭IP访问：
+
+$ iptables -A INPUT -p tcp -s 192.168.1.2 -j DROP
+
+# 保存配置
+sudo netfilter-persistent save
+
+# reload重载更新
+sudo netfilter-persistent reload
+
+# sudo iptables -L
+
+
+效果大致如下：
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+ACCEPT     tcp  --  anywhere             anywhere             tcp dpt:7890
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+
+
+-------------------------------------------------------------------------------------------------------
+
 ---------------------------yum 安装rpm解决依赖库------------------------
 yum --nogpgcheck localinstall packagename.arch.rpm
 
