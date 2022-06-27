@@ -688,6 +688,10 @@ conda install nb_conda_kernels
 
 解决：在新环境中安装ipykernel。
 conda install -n 环境名称 ipykernel #直接指定环境安装ipykernel
+
+查看所有的kernel
+jupyter kernelspec list
+
 python -m ipykernel install --user（非服务器可缺省） --name 环境名称 #写入jupyter notebook 的kernel
 
 
