@@ -506,6 +506,82 @@ target     prot opt source               destination
 
 -------------------------------------------------------------------------------------------------------
 
+
+
+-------------------------------ufw 防火墙-------------------------------------------------
+1. 安装  ufw 
+
+sudo apt-get install ufw
+
+2. 启用/禁用 ufw
+
+启用ufw命令：
+sudo ufw enable (注意如果已经打开ufw，再次开启可能会终止存在的ssh连接)
+
+禁用ufw命令：
+sudo ufw disable
+
+查看防火墙当前的状态：
+
+sudo ufw status
+Status: active
+
+To                         Action      From
+--                         ------      ----
+7890                       ALLOW IN    Anywhere                  
+22                         ALLOW IN    Anywhere                  
+7890 (v6)                  ALLOW IN    Anywhere (v6)             
+22 (v6)                    ALLOW IN    Anywhere (v6)  
+
+
+允许/拒绝连接
+
+允许指定端口连接
+sudo ufw allow 21
+
+sudo ufw allow 6000:6007/tcp
+sudo ufw allow 6000:6007/udp
+
+sudo ufw allow from 15.15.15.51
+
+允许ip网段的连接
+
+允许ip段15.15.15.1到15.15.15.254的所有连接
+
+sudo ufw allow from 15.15.15.0/24
+
+禁止80端口的访问
+sudo ufw deny 80 
+
+禁止来自某个ip访问
+sudo ufw deny from 15.15.15.51
+
+通过规则删除
+首先查看所有规则的规则号：
+
+sudo ufw status numbered
+
+     To                         Action      From
+     --                         ------      ----
+[ 1] 7890                       ALLOW IN    Anywhere                  
+[ 2] 22                         ALLOW IN    Anywhere                  
+[ 3] 7890 (v6)                  ALLOW IN    Anywhere (v6)             
+[ 4] 22 (v6)                    ALLOW IN    Anywhere (v6) 
+
+
+然后delete规则号即可
+
+sudo ufw delete 1
+sudo ufw delete 3 
+
+
+重置防火墙规则
+
+sudo ufw reset 
+该命令将禁用ufw，并删除所有已经定义的规则，不过默认该命令会对以设置的规则备份
+
+------------------------------------------------------------------------------------------
+
 ---------------------------yum 安装rpm解决依赖库------------------------
 yum --nogpgcheck localinstall packagename.arch.rpm
 
@@ -522,7 +598,15 @@ dpkg解决依赖库问题
 ## 添加路径很重要
 sudo apt-get install ./packagename.arch.deb
 
+dpkg查看已安装
+
+sudo dpkg -l | grep 包名
+
 dpkg卸载
+
+sudo dpkg -r 软件名
+
+sudo dpkg --purge 软件名 (卸载并删除配置)
 
 dpkg -get-selections | grep 软件名
 
