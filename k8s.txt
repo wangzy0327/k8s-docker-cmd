@@ -1036,6 +1036,12 @@ java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=0.0.0.0:8000 
 
 Nvidia Nsight System 使用需要管理员或者用户具有CAP_SYS_ADMIN权限
 
+Nvidia Nsight Compute 普通用户使用
+
+echo 'options nvidia "NVreg_RestrictProfilingToAdminUsers=0"' | sudo tee -a /etc/modprobe.d/nvidia.conf
+sudo update-initramfs -u 
+sudo reboot
+
 Ubuntu下给user1添加CAP_SYS_ADMIN权限
 
 打开 /etc/security/capability.conf 配置文件 添加cap_sys_admin
