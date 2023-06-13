@@ -1136,3 +1136,55 @@ gid=1001(user1)
 groups=1001(user1)
 
 -------------------------------------------------------------------------------------------------------------------------
+
+git 查看代码行数
+
+git log --author="wangziyang" --after="2022-07-15" --pretty=tformat: --numstat | awk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf "added lines: %s, removed lines: %s, total lines: %s\n", add, subs, loc }' - 
+
+------------------------------------------------nsys--------------------------------------------------
+
+nsys profile --stats=true --force-overwrite --trace=cublas,cuda,osrt,cudnn,nvtx -o qdrep/resnet101-v1-7-opencl /home/wzy/anaconda3/envs/tvm/bin/python onnx_nvidia_load_library.py
+
+------------------------------------------------------------------------------------------------------
+------------------------------------------------mps--------------------------------------------------
+所有进程共享一个cuda context
+
+分析
+  运行nvprof 收集执行信息
+   nvprof --profile-all-processes -o output.%p  
+   %p 是提交四个进程的pid号，用以区分四个文件
+  在另一个窗口中运行应用程序
+   mpirun -np 4 ./test
+  回到窗口1，按Ctrl+c 结束nvprof收集信息
+  将nvprof结果(output.%p) 导入到nsight/nvvp
+     选择File-Import
+     选择nvprof，Multiple Processes
+     每个process会对应一个nvprof的profile文件，选中多个文件
+
+
+-----------------------------------------------------------------------------------------------------
+
+---------------------------------------------------nvcc nvidia-smi-----------------------------------
+nvidia-smi -L
+nvidia-smi -q -i 0 (查看第0块卡)
+
+环境变量
+设置运行时环境变量 CUDA_VISIBLE_DEVICES=2,nvidia 驱动会屏蔽其他GPU，讲设备2当做设备0，也可以指定多个
+CUDA_VISIBLE_DEVICES=2,3 则只显示设备2和设备3,并将其设备索引变为0和1
+
+nvcc编译命令
+nvcc -O3 -arch=compute_35 -code=compute_35,sm_70,sm_75 simple.cu -o simple
+ -arch指定虚拟架构为sm_35产生ptx代码，-code选项用于向nvcc将什么代码放入最后的目标文件
+nvcc将以compute_35为虚拟架构产生ptx代码，将包含面向compute_35虚拟架构的ptx代码及面向sm_70、sm_75实际架构的二进制代码
+
+nvprof --metrics branch_efficiency ./simple  分支效率，观察线程束分化
+
+nvprof --events branch,divergent_branch ./simple  获得分支和分化分支的事件计数器
+
+nvprof --metrics achieved_occupancy ./simple  查看占用率  (更多活跃的线程束)
+
+nvprof --metrics gld_throughput ./simple   加载吞吐量
+
+nvprof --metrics gld_efficiency ./simple  加载吞吐量效率
+-----------------------------------------------------------------------------------------------------
+
